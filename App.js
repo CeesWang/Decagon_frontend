@@ -4,16 +4,23 @@ import Navigator from './components/Navigator.js'
 
 class App extends React.Component {
   
-  componentDidMount() {
-    Font.loadAsync({    // loads the fonts
+  state = {
+    fontLoaded : false,
+  }
+
+  async componentDidMount() {
+    await Font.loadAsync({    // loads the fonts
       'Baloo': require('./assets/fonts/Baloo.ttf'),
     });
+    this.setState({ fontLoaded: true});
   }
 
   render () {
-    return (
-      <Navigator />
-    )
+    // if (this.state.fontLoaded)
+    //   return <Navigator />
+    // else 
+    //   return null;
+    return this.state.fontLoaded ? <Navigator /> : null;
   }
 }
 
