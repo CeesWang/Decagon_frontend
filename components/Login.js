@@ -1,11 +1,12 @@
 import React from 'react';
-import {TouchableOpacity, StyleSheet, ImageBackground, Text, View } from 'react-native';
+import {TouchableOpacity, StyleSheet, ImageBackground, Text, View, StatusBar } from 'react-native';
 
 class Login extends React.Component {
     //baloo
     render() {
         return (
         <View style={styles.container}>
+            <StatusBar hidden={true} />  
             <ImageBackground source={require('../images/background.jpeg')} style={styles.backgroundImage}>
                 <TouchableOpacity onPress={() => this.props.navigation.navigate('Game')}>
                     <Text style={styles.options}>Play</Text>
