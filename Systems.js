@@ -1,7 +1,6 @@
 import Matter from 'matter-js';
 import React from 'react';
-import { HEIGHT_BETWEEN_SCREEN_BOARD, WIDTH_BETWEEN_SCREEN_BOARD ,CELL_SIZE, MAX_WIDTH_UNIT} from './Constants.js'
-const shapesArray = ["zero", "one", "two", "triangle", "square", "pentagon", "hexcagon", "heptagon", "octogon", "nonagon", "decagon"];
+import { HEIGHT_BETWEEN_SCREEN_BOARD, WIDTH_BETWEEN_SCREEN_BOARD ,CELL_SIZE, MAX_WIDTH_UNIT, BOARD_HEIGHT} from './Constants.js'
 import Triangle from './shapes/Triangle.js';
 import Square from './shapes/Square.js';
 import Pentagon from './shapes/Pentagon.js';
@@ -10,11 +9,20 @@ import Heptagon from './shapes/Heptagon.js';
 import Octogon from './shapes/Octogon.js';
 import Nonagon from './shapes/Nonagon.js';
 import Decagon from './shapes/Decagon.js';
+const shapesArray = ["triangle", "square", "pentagon", "hexagon", "heptagon", "octogon", "nonagon"];
+const shapesMap = { triangle: "square", square: "pentagon", pentagon: "hexagon", hexagon: "heptagon", heptagon: "octogon",octogon: "nonagon", nonagon: "decagon" } // maps to next upgrade
+const renderShape = { triangle: <Triangle />, square: <Square />, pentagon: <Pentagon />, hexagon: <Hexagon />, heptagon: <Heptagon />, octogon: <Octogon />, nonagon: <Nonagon />, decagon: <Decagon /> }
 
 let selectedShape = null;
 let id = 0;
+let nextRow = false;
+let gameTime = 0;
 
-export const Physics = (entities, {time }) => {
+export const Physics = (entities, { time }) => {
+    if ((time.current % 1000) >= 970) {
+        ++gameTime;
+        nextRow = true;
+    }
     let engine = entities["physics"].engine;
     Matter.Engine.update(engine, time.delta);
     return entities;
@@ -43,7 +51,11 @@ export const MoveShape = (entities, {touches }) => {
     let move = touches.find(x => x.type === "move"); // on touch move 
 
 	if (move && entities[selectedShape]) {
-        const currPos = {y: move.event.pageY - HEIGHT_BETWEEN_SCREEN_BOARD - (CELL_SIZE/2)};
+        const currPos = {}
+        if (move.event.pageY >= BOARD_HEIGHT)
+            currPos.y = BOARD_HEIGHT-CELL_SIZE;
+        else 
+            currPos.y = move.event.pageY - HEIGHT_BETWEEN_SCREEN_BOARD - (CELL_SIZE/2);
         if (move.event.pageX >= MAX_WIDTH_UNIT*CELL_SIZE) {     // prevent box to move outside the right wall
             currPos.x = (MAX_WIDTH_UNIT-1) * CELL_SIZE;
         }
@@ -71,20 +83,20 @@ export const upgradeShape = (entities) => {
     if (shape) {        // found the block to upgrade
         let world = entities["physics"].world;
         let position = [entities[shape].body.position.x, entities[shape].body.position.y]
-        let label = nextShape(entities[shape].body.label.substring(1))       //triangle square etc
+        let label = shapesMap[entities[shape].body.label.substring(1)]       //triangle square etc
         let newShape = Matter.Bodies.rectangle(
             position[0],
             position[1],
             CELL_SIZE,
             CELL_SIZE, 
-            { label: label, restitution:0, inertia: Infinity, frictionAir: 0.01 }
+            { label: label, restitution:0, inertia: Infinity, mass: 0, frictionAir: 0.01 }
             );
             
             Matter.World.add(world, [newShape]);
             
             entities[++id] = {  
                 body: newShape,
-                renderer: renderShape(label) 
+                renderer: renderShape[label] 
             }
 
             Matter.Composite.remove(world, entities[shape].body);           
@@ -93,11 +105,45 @@ export const upgradeShape = (entities) => {
         return entities
 }
 
-export const Clock = (entities, {time }) => {
-    return entities;
-};
+export const nextRowShapes = (entities, {dispatch}) => {
+    if (gameTime % 3 === 0 && nextRow) {
+        Object.keys(entities).forEach(key=> {
+            if (key !== "physics" && key !== "leftWall" && key !== "rightWall" && key !== "topWall" && key !== "floor") {
+                let nextPos = {x: entities[key].body.position.x , y:entities[key].body.position.y - CELL_SIZE};
+                Matter.Body.setPosition(entities[key].body, nextPos);
+            }
+        });
+        let world = entities["physics"].world;
+        for (let i = 0; i < MAX_WIDTH_UNIT; ++i) {
+            let label = randomShape();
+            let newShape = Matter.Bodies.rectangle(
+                CELL_SIZE * i,
+                BOARD_HEIGHT-CELL_SIZE,
+                CELL_SIZE,
+                CELL_SIZE, 
+                { label: label, restitution:0, inertia: Infinity, mass: 300}
+                );
+                Matter.World.add(world, [newShape]);
+                
+                entities[++id] = {  
+                    body: newShape,
+                    renderer: renderShape[label] 
+                }
+        }
+        nextRow = false;
+    }
+    return entities
+}
 
 const distance = ([x1, y1], [x2, y2]) => Math.sqrt(Math.abs(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)));
+
+const randomShape = (shapeAbove ="nothing") => {
+    let randomShape = shapesArray[Math.floor(Math.random() * shapesArray.length)];
+    while (randomShape === shapeAbove) { 
+        randomShape = shapesArray[Math.floor(Math.random() * shapesArray.length)];
+    }
+    return randomShape;         
+}
 
 const findFallPosition = (xCoordinate) => {
     if (xCoordinate < 0) 
@@ -110,33 +156,3 @@ const findFallPosition = (xCoordinate) => {
     return((MAX_WIDTH_UNIT-1)*CELL_SIZE);
 }
 
-const renderShape = (label) => {
-    switch(label) {
-        case "triangle":
-            return <Triangle /> 
-        case "square": 
-            return <Square />
-        case "pentagon":
-            return <Pentagon />
-        case "hexagon":
-            return <Hexagon />    
-        case "heptagon":
-                return <Heptagon />
-        case "octogon":
-                return <Octogon />
-        case "nonagon":
-                return <Nonagon />
-        case "decagon":
-                return <Decagon />
-    }
-    return 0;
-}
-
-const nextShape = (currShape) => {
-    for (let i = 0; i < shapesArray.length; ++i) {
-        if (shapesArray[i] === currShape) {
-            return shapesArray[i+1];        // next shape
-        }
-    }
-    return 0;
-}
