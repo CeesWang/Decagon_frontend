@@ -8,8 +8,9 @@ export default class Heptagon extends React.Component{
             <Svg style={{fill:"url(#grad)",scale: 0.9, width: CELL_SIZE, height: CELL_SIZE, position:'absolute', left: this.props.body.position.x, top: this.props.body.position.y}}>
                 <Defs>
                     <LinearGradient id="grad" x1="0" y1="0" x2="170" y2="0">
-                    <Stop offset="0" stopColor="aquamarine" stopOpacity="1" />
-                    <Stop offset="1" stopColor="chocolate" stopOpacity="1" />
+                    <Stop offset="0" stopColor="#40E0D0" stopOpacity="1" />
+                    <Stop offset="0.5" stopColor="#FF8C00" stopOpacity="1" />
+                    <Stop offset="1" stopColor="#FF0080" stopOpacity="1" />
                     </LinearGradient>
                 </Defs>
                 <Polygon

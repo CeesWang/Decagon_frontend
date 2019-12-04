@@ -11,3 +11,4 @@ export const BOARD_WIDTH = Math.floor(MAX_WIDTH * 0.9);
 export const CELL_SIZE = Math.floor((BOARD_WIDTH / MAX_WIDTH_UNIT) - OFFSET*1.1);
 export const HEIGHT_BETWEEN_SCREEN_BOARD = Math.floor((MAX_HEIGHT-BOARD_HEIGHT) / 2); 
 export const WIDTH_BETWEEN_SCREEN_BOARD = Math.floor((MAX_WIDTH-BOARD_WIDTH) / 2); 
+export const API_BASE = "https://decagon-backend.herokuapp.com/scores/";

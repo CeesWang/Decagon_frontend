@@ -8,8 +8,9 @@ export default class Nonagon extends React.Component{
             <Svg style={{fill:"url(#grad)", scale: 0.9, width: CELL_SIZE, height: CELL_SIZE, position:'absolute', left: this.props.body.position.x, top: this.props.body.position.y}}>
                 <Defs>
                     <LinearGradient id="grad" x1="0" y1="0" x2="170" y2="0">
-                    <Stop offset="0" stopColor="blue" stopOpacity="1" />
-                    <Stop offset="1" stopColor="brown" stopOpacity="1" />
+                    <Stop offset="0" stopColor="#FEAC5E" stopOpacity="1" />
+                    <Stop offset="0.5" stopColor="#C779D0" stopOpacity="1" />
+                    <Stop offset="1" stopColor="#4BC0C8" stopOpacity="1" />
                     </LinearGradient>
                 </Defs>
                 <Polygon

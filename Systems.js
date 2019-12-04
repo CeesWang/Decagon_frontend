@@ -9,15 +9,27 @@ import Heptagon from './shapes/Heptagon.js';
 import Octogon from './shapes/Octogon.js';
 import Nonagon from './shapes/Nonagon.js';
 import Decagon from './shapes/Decagon.js';
-const shapesArray = ["triangle", "square", "pentagon", "hexagon"]; //"heptagon", "octogon", "nonagon"
+const shapesArrayEasy = ["triangle", "square", "pentagon", "hexagon"]; 
+const shapesArrayMedium = ["triangle", "square", "pentagon", "hexagon", "heptagon"]; 
+const shapesArrayHard = ["triangle", "square", "pentagon", "hexagon", "heptagon", "octogon"]; 
 const shapesMap = { triangle: "square", square: "pentagon", pentagon: "hexagon", hexagon: "heptagon", heptagon: "octogon",octogon: "nonagon", nonagon: "decagon" } // maps to next upgrade
 const renderShape = { triangle: <Triangle />, square: <Square />, pentagon: <Pentagon />, hexagon: <Hexagon />, heptagon: <Heptagon />, octogon: <Octogon />, nonagon: <Nonagon />, decagon: <Decagon /> }
 
 let selectedShape = null;
 let id = 0;
-let nextRow = false;
+let nextRow = true;
 let gameTime = 0;
+let score = 0;
+let difficulty = 0;
 
+export const Reset = () => {
+    difficulty = 0;
+    score = 0;
+    selectedShape = null;
+    nextRow = true;
+    gameTime = 0;
+
+}
 export const Physics = (entities, { time, dispatch }) => {
     if ((time.current % 1000) >= 970) {
         dispatch({type: "timer"});      // increment timer     
@@ -40,8 +52,6 @@ export const MoveShape = (entities, {touches }) => {
 				body && distance([body.position.x+ CELL_SIZE/2,  body.position.y+ CELL_SIZE/2], startPos) < 30
 			);
         });
-        // if (entities[selectedShape])
-        //     Matter.Body.setStatic(entities[selectedShape].body, false)
 	}
 
     let move = touches.find(x => x.type === "move"); // on touch move 
@@ -56,7 +66,7 @@ export const MoveShape = (entities, {touches }) => {
             currPos.x = (MAX_WIDTH_UNIT-1) * CELL_SIZE + MAX_WIDTH_UNIT*OFFSET;
         }
         else if (move.event.pageX- WIDTH_BETWEEN_SCREEN_BOARD - (CELL_SIZE/2) <= 0) { // prevent box to move outside the left wall
-            currPos.x = 0;
+            currPos.x = OFFSET;
         }
         else {
             currPos.x = move.event.pageX - WIDTH_BETWEEN_SCREEN_BOARD - (CELL_SIZE/2);
@@ -92,7 +102,6 @@ export const KeepShapesInScreen = (entities) => {
     });
     return entities;
 }
-
 
 export const RemoveShape = (entities) => {
     let deleteShape = Object.keys(entities).find(key => key !== "physics" && entities[key].body.label === "DESTROY");
@@ -130,23 +139,25 @@ export const UpgradeShape = (entities) => {
 export const NextRowShapes = (entities, {dispatch}) => {
     if (gameTime % 6 === 0 && nextRow) {
         let world = entities["physics"].world;
-        for (let i = 0; i < MAX_WIDTH_UNIT; ++i) {
-            let label = randomShape();
+        let numShapes = MAX_WIDTH_UNIT                  // default hard
+        if (difficulty === 0) numShapes = 4;            // easy 
+        else if (difficulty === 1) numShapes = 5;       // normal
+        for (let i = 0; i < numShapes; ++i) {
+            let label = randomShape(difficulty);
             let newShape = Matter.Bodies.rectangle(
                 (CELL_SIZE * i) + (OFFSET * (i+1)),
                 BOARD_HEIGHT - CELL_SIZE,
                 CELL_SIZE,
                 CELL_SIZE, 
-                { label: label, inertia: Infinity, restitution: 0} 
+                { label: label, inertia: Infinity, restitution: 0, } 
                 );
                 Matter.World.add(world, [newShape]);
-                
                 entities[++id] = {  
                     body: newShape,
                     renderer: renderShape[label] 
                 }
         } 
-        dispatch({type: "resetTimer"});      // increment score by one 
+        dispatch({type: "resetTimer"}); 
         nextRow = false;
     }
     return entities
@@ -159,6 +170,13 @@ export const Score = (entities, {dispatch}) => {
             if (entities[key].body.label === "decagon") {           
                 Matter.Composite.remove(world, entities[key].body);     // delete if its a decagon          
                 delete entities[key];
+                ++score;
+                if (score <= 30) {
+                    dispatch({type: "gravity"});
+                }
+                if (score !== 0 && score % 3 === 0 && difficulty !== 2) {
+                    ++difficulty;
+                }
                 dispatch({type: "score"});      // increment score by one 
             } 
         }
@@ -168,22 +186,13 @@ export const Score = (entities, {dispatch}) => {
 
 const distance = ([x1, y1], [x2, y2]) => Math.sqrt(Math.abs(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)));
 
-const randomShape = (shapeAbove ="nothing") => {
-    let randomShape = shapesArray[Math.floor(Math.random() * shapesArray.length)];
-    while (randomShape === shapeAbove) { 
-        randomShape = shapesArray[Math.floor(Math.random() * shapesArray.length)];
+const randomShape = (difficulty = 0) => {
+    switch (difficulty) {
+        case 0: 
+        return shapesArrayEasy[Math.floor(Math.random() * shapesArrayEasy.length)]; 
+        case 1: 
+        return shapesArrayMedium[Math.floor(Math.random() * shapesArrayMedium.length)]; 
+        case 2: 
+        return shapesArrayHard[Math.floor(Math.random() * shapesArrayHard.length)]; 
     }
-    return randomShape;         
 }
-
-const findFallPosition = (xCoordinate) => {
-    if (xCoordinate < 0) 
-        return OFFSET;
-    for(let i = 1; i < MAX_WIDTH_UNIT; ++i) {
-        if (xCoordinate <= i*CELL_SIZE + OFFSET*(i+1)) {
-            return(i*CELL_SIZE + OFFSET*(i+1));
-        }
-    }
-    return((MAX_WIDTH_UNIT-1)*CELL_SIZE + MAX_WIDTH_UNIT*OFFSET);
-}
-
