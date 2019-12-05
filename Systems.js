@@ -9,6 +9,7 @@ import Heptagon from './shapes/Heptagon.js';
 import Octogon from './shapes/Octogon.js';
 import Nonagon from './shapes/Nonagon.js';
 import Decagon from './shapes/Decagon.js';
+import { store } from './ReduxStore.js';
 const shapesArrayEasy = ["triangle", "square", "pentagon", "hexagon"]; 
 const shapesArrayMedium = ["triangle", "square", "pentagon", "hexagon", "heptagon"]; 
 const shapesArrayHard = ["triangle", "square", "pentagon", "hexagon", "heptagon", "octogon"]; 
@@ -17,26 +18,14 @@ const renderShape = { triangle: <Triangle />, square: <Square />, pentagon: <Pen
 
 let selectedShape = null;
 let id = 0;
-let nextRow = true;
-let gameTime = 0;
-let score = 0;
 let difficulty = 0;
 
 export const Reset = () => {
     difficulty = 0;
-    score = 0;
     selectedShape = null;
-    nextRow = true;
-    gameTime = 0;
-
 }
-export const Physics = (entities, { time, dispatch }) => {
-    if ((time.current % 1000) >= 970) {
-        dispatch({type: "timer"});      // increment timer     
-        ++gameTime;
-        nextRow = true;
-    }
 
+export const Physics = (entities, { time }) => {
     let engine = entities["physics"].engine;
     Matter.Engine.update(engine, time.delta);
     return entities;
@@ -76,11 +65,8 @@ export const MoveShape = (entities, {touches }) => {
 
     let end = touches.find(x => x.type === "end");  // on touch release
     if (end && entities[selectedShape] && move) {
-        // const endPos = {x: findFallPosition(move.event.pageX - WIDTH_BETWEEN_SCREEN_BOARD - (CELL_SIZE/2)), y: move.event.pageY - HEIGHT_BETWEEN_SCREEN_BOARD - (CELL_SIZE/2)};
-        // Matter.Body.setPosition(entities[selectedShape].body, endPos)
         selectedShape = null;
     }
-
 	return entities;
 };
 
@@ -111,6 +97,7 @@ export const RemoveShape = (entities) => {
     }
     return entities;
 }
+
 export const UpgradeShape = (entities) => {
     let shape = Object.keys(entities).find(key => key !== "physics" && entities[key].body.label[0] === "U");    // Utriangle, Usquare etc
     if (shape) {        // found the block to upgrade
@@ -136,8 +123,9 @@ export const UpgradeShape = (entities) => {
     return entities
 }
 
-export const NextRowShapes = (entities, {dispatch}) => {
-    if (gameTime % 6 === 0 && nextRow) {
+export const NextRowShapes = (entities) => {
+
+    if (store.getState().gameTimer % store.getState().roundTimer === 0 && store.getState().nextRow) {
         let world = entities["physics"].world;
         let numShapes = MAX_WIDTH_UNIT                  // default hard
         if (difficulty === 0) numShapes = 4;            // easy 
@@ -156,28 +144,25 @@ export const NextRowShapes = (entities, {dispatch}) => {
                     body: newShape,
                     renderer: renderShape[label] 
                 }
-        } 
-        dispatch({type: "resetTimer"}); 
-        nextRow = false;
+        }
+        store.dispatch({type: 'NEXT_ROUND'})
     }
     return entities
 }
 
 export const Score = (entities, {dispatch}) => {
-    let world = entities["physics"].world;
     Object.keys(entities).forEach(key => {
         if (key !== "physics" && key.substring(key.length-4) !== "Wall") {
-            if (entities[key].body.label === "decagon") {           
-                Matter.Composite.remove(world, entities[key].body);     // delete if its a decagon          
-                delete entities[key];
-                ++score;
-                if (score <= 30) {
-                    dispatch({type: "gravity"});
-                }
-                if (score !== 0 && score % 3 === 0 && difficulty !== 2) {
-                    ++difficulty;
-                }
-                dispatch({type: "score"});      // increment score by one 
+            if (entities[key].body.label === "decagon") {                
+                setTimeout(() => {
+                    entities[key].body.label = "DESTROY"
+                }, 200);
+                entities[key].body.label ="TOBEREMOVED";
+                store.dispatch({type: 'INCREMENT_SCORE'});          //increment score by 1
+                let score = store.getState().score
+
+                if (score <= 30) dispatch({type: "gravity"});
+                if (score !== 0 && score % 5 === 0 && difficulty !== 2) ++difficulty;
             } 
         }
     });

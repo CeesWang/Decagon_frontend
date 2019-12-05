@@ -1,7 +1,10 @@
 import React from 'react';
 import * as Font from 'expo-font';
-import Navigator from './components/Navigator.js'
-
+import Navigator from './components/Navigator.js';
+import { Provider } from 'react-redux';
+import { store } from './ReduxStore'; 
+//credit
+//<div>Icons made by <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
 class App extends React.Component {
   
   state = {
@@ -16,14 +19,14 @@ class App extends React.Component {
   }
 
   render () {
-    // if (this.state.fontLoaded)
-    //   return <Navigator />
-    // else 
-    //   return null;
-    return this.state.fontLoaded ? <Navigator /> : null;
+    return this.state.fontLoaded ? 
+    (
+      <Provider store={store}> 
+        <Navigator /> 
+      </Provider>
+    ) : null;
   }
 }
 
-export default App;
-
+export default App
 

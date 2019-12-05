@@ -6,6 +6,7 @@ import { GameEngine } from 'react-native-game-engine';
 import { Physics, MoveShape, NextRowShapes, KeepShapesInScreen, UpgradeShape, RemoveShape, Score, Reset} from '../Systems.js'
 import { CELL_SIZE, HEIGHT_BETWEEN_SCREEN_BOARD,WIDTH_BETWEEN_SCREEN_BOARD,BOARD_HEIGHT, BOARD_WIDTH, API_BASE} from '../Constants.js'
 import DecagonScore from '../shapes/DecagonScore.js';
+import { connect } from 'react-redux';
 
 class Game extends React.Component {
     constructor(props) {
@@ -15,15 +16,32 @@ class Game extends React.Component {
         this.entities = this.setUpWorld()
     }
 
+    componentDidMount() {
+        this.startGame();
+    }
+    startGame = () => {
+        // let progressBarInterval = setInterval(()=> {
+        // }, 1000)
+        let gameInterval = setInterval(()=> {
+            this.props.incrementGameTimer();
+            this.props.incrementProgressBar();
+            if (!this.state.gameOver) {
+               clearInterval(gameInterval);
+               this.props.resetGameTimer();
+               this.props.resetProgressBar();
+            }
+            if (this.props.gameTimer % this.props.roundTimer === 0) {
+                this.props.nextRound();
+                this.props.resetProgressBar();
+            }
+        }, 1000);
+    }
+
     state = {
         gameOver: true,
-        nextRow: false,
-        nextRowTime: 0,
-        score: 0,
-        id: 0,
         name: "",
         topScore: 0,
-        gravity: -0.0075
+        gravity: -0.01
     }
 
     setUpWorld = () => {
@@ -33,7 +51,7 @@ class Game extends React.Component {
         this.world.gravity.y = this.state.gravity;
         const bottomWall = Matter.Bodies.rectangle(BOARD_WIDTH/2, BOARD_HEIGHT, BOARD_WIDTH, CELL_SIZE, {label: "bottomWall",isStatic: true,});
         const rightWall = Matter.Bodies.rectangle(BOARD_WIDTH, 0, WIDTH_BETWEEN_SCREEN_BOARD, BOARD_HEIGHT, {label: "rightWall", isStatic:true});
-        const topWall = Matter.Bodies.rectangle(0,-CELL_SIZE, BOARD_WIDTH, CELL_SIZE, {label: "topWall", isStatic: true,});
+        const topWall = Matter.Bodies.rectangle(BOARD_WIDTH/2, -CELL_SIZE, BOARD_WIDTH, CELL_SIZE, {label: "topWall", isStatic: true,});
         const leftWall = Matter.Bodies.rectangle(-CELL_SIZE, 0, WIDTH_BETWEEN_SCREEN_BOARD, BOARD_HEIGHT, {label: "leftWall",isStatic: true,});
         Matter.World.add(world,[bottomWall, leftWall, rightWall, topWall]);
         this.handleCollision(engine, world);
@@ -52,6 +70,7 @@ class Game extends React.Component {
                 let a = event.pairs[i].bodyA;   // doing the collision
                 let b = event.pairs[i].bodyB;   // victim of collision
                 if (a.label === "topWall" || b.label === "topWall") {       // game over when block hits top wall
+                    // this.props.handleGameOver();
                     this.gameEngine.dispatch({type: "game-over"});
                 }
                 else if (a.label === b.label) {
@@ -80,58 +99,59 @@ class Game extends React.Component {
             this.setState({gameOver: false});
         }
         else if (event.type === "gravity") {
-            this.world.gravity.y -= 0.0015
-        }
-        else if (event.type === "score") {
-            this.setState({score: this.state.score + 1});
-        }
-        else if (event.type === "resetTimer") {
-            this.setState({nextRowTime: 0});
-        }
-        else if (event.type === "timer") {
-            this.setState({nextRowTime: this.state.nextRowTime + 0.2})
+            this.world.gravity.y -= 0.001
         }
     }
+
     handleSubmit = () => {
-        fetch(API_BASE,{
-            method: "POST",
-            headers: {
-                "Content-Type" : "application/json",
-                "Accepts" : "application/json"
-            },
-            body: JSON.stringify( {
-                name: this.state.name,
-                score: this.state.score
+            this.props.submitToFalse();
+            fetch(API_BASE, {
+                method: "POST",
+                headers: {
+                    "Content-Type" : "application/json",
+                    "Accepts" : "application/json"
+                },
+                body: JSON.stringify( {
+                    name: this.props.name,
+                    score: this.props.score
+                })
             })
-        })
-        .then(resp => resp.json())
-        .then(data => {
-            if (data.score > this.state.topScore){
-                this.setState({topScore: data.score});
-            }
-        })
-    .catch((error) => {
-        console.log("submit score", error);
-        })     
+            .then(resp => resp.json())
+            .then(data => {
+                this.props.newHighScore(data);
+                this.props.resetGame();
+                this.props.navigation.navigate('LeaderBoard')        
+            })
+            .catch((error) => {
+                console.log("submit score", error);
+            })   
     }
     
     handleNextGame = () => {
+        if (this.props.score > this.props.highscore) {
+            this.props.newHighScore();
+        }        
         Reset();    //resets the constants in system
+        this.props.submitToTrue();
+        console.log(this.props.submit);
+        this.props.resetGame();
+        this.setState({gameOver: !this.state.gameOver}) 
         this.gameEngine.swap(this.setUpWorld());
-        this.setState({gameOver: !this.state.gameOver, score: 0, nextRowTime: 0});
+        this.startGame();
+
     }
     
     render(){
         return (
-            <ImageBackground source={require('../images/background2.jpg')} style={styles.backgroundImage}>
+            <ImageBackground source={require('../images/background10.png')} style={styles.backgroundImage}>
                 <View style ={styles.topContainer}>
                     <View style={styles.scoreContainer}>
-                        <Text style={styles.scores}>HIGH SCORE: {this.state.topScore}          </Text>
+                        <Text style={styles.scores}>HIGH SCORE: {this.props.highscore}          </Text>
                         <Text style={styles.scores}>SCORE: </Text>
                         <DecagonScore />
-                        <Text style={styles.scores}> x {this.state.score}</Text>
+                        <Text style={styles.scores}> x {this.props.score}</Text>
                     </View>
-                    <Progress.Bar unfilledColor="black" color="#cb2d3e" style={styles.progressBar}progress={this.state.nextRowTime} width ={BOARD_WIDTH} height={Math.floor(CELL_SIZE/3)}/>
+                    <Progress.Bar unfilledColor="black" color="#FDFC47" borderRadius={6} style={styles.progressBar}progress={this.props.progressBar} width ={BOARD_WIDTH} height={Math.floor(CELL_SIZE/3)}/>
                 </View>
                 <GameEngine
                     style={styles.board}
@@ -143,17 +163,20 @@ class Game extends React.Component {
                     <StatusBar hidden={true} />                                       
                 </GameEngine>
                 { this.state.gameOver ?             // popup after the game is over
-                    null : 
+                    null :     
                     (<View style={styles.gameOver}> 
+                        <Text style={styles.gameOverTitle} >GAME OVER</Text>
                         <TextInput
                             style={styles.name}
                             placeholder="Enter your name:"
-                            onChangeText={(name) => this.setState({name: name})}
-                            value={this.state.name} 
+                            onChangeText={(name) => this.props.updateName(name)}
+                            value={this.props.name} 
                         />
-                        <TouchableOpacity onPress={this.handleSubmit}>
+                        {this.props.submit ? 
+                        (<TouchableOpacity onPress={this.handleSubmit}>
                             <Text style={styles.gameOverOptions} >Submit</Text>
-                        </TouchableOpacity>
+                        </TouchableOpacity>) : null
+                        }
                         <TouchableOpacity>
                             <Text style={styles.gameOverOptions} onPress={this.handleNextGame}>Play Again</Text>
                         </TouchableOpacity>
@@ -161,6 +184,36 @@ class Game extends React.Component {
                 }
             </ImageBackground>
         );
+    }
+}
+
+
+function mapStateToProps(state) {
+    return {
+        gameOver: state.gameOver,
+        roundTimer: state.roundTimer,
+        gameTimer: state.gameTimer,
+        score: state.score,
+        name: state.name,
+        highscore: state.highscore,
+        progressBar: state.progressBar,
+        submit: state.submit,
+    }
+}
+
+function mapDispatchToProps(dispatch) {
+    return {
+        handleGameOver: () => dispatch({type: 'HANDLE_GAMEOVER'}),
+        incrementGameTimer: () => dispatch({type: 'INCREMENT_GAME_TIMER'}),
+        resetGameTimer: () => dispatch({type: 'RESET_GAME_TIMER'}),
+        nextRound: () => dispatch({type: 'NEXT_ROUND'}),
+        updateName: (payload) => dispatch({type: 'UPDATE_NAME', payload}),
+        newHighScore: () => dispatch({type: "NEW_HIGH_SCORE"}),
+        resetProgressBar: () => dispatch({type: "RESET_PROGRESS_BAR"}),
+        incrementProgressBar: () => dispatch({type: "INCREMENT_PROGRESS_BAR"}),
+        resetGame:() => dispatch({type: "RESET_GAME"}),
+        submitToTrue:() => dispatch({type: 'SUBMIT_TRUE'}),
+        submitToFalse:() => dispatch({type: 'SUBMIT_FALSE'}),
     }
 }
 
@@ -183,6 +236,7 @@ const styles = StyleSheet.create({
         height: BOARD_HEIGHT,
         width: BOARD_WIDTH,
         borderRadius: 10,
+        borderColor: 'white',
         backgroundColor: 'rgba(0,0,0,0.3)',
         borderWidth: 1
     },
@@ -200,7 +254,6 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         position: 'absolute',
         top: HEIGHT_BETWEEN_SCREEN_BOARD,
-        borderRadius: 10,
         fontFamily: 'Baloo',
         fontSize: 18,
         color: 'white',
@@ -214,11 +267,18 @@ const styles = StyleSheet.create({
         fontSize: 18,
         margin: 6
     },
+    gameOverTitle: {
+        fontSize: 50,
+        margin: 6,
+        fontFamily: 'Baloo',
+        color: 'white',
+    },
     name :{
         height: CELL_SIZE/2,
         width: BOARD_WIDTH/2,
         textAlign: 'center',
-        borderWidth: 1,
+        borderWidth: 2,
+        borderRadius: 5,
         borderColor: 'white',
         fontFamily: 'Baloo',
         color: 'white',
@@ -226,4 +286,4 @@ const styles = StyleSheet.create({
     }
   })
 
-export default Game;
+export default connect(mapStateToProps, mapDispatchToProps)(Game);

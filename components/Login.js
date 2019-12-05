@@ -1,12 +1,14 @@
 import React from 'react';
 import {TouchableOpacity, StyleSheet, ImageBackground, Text, View, StatusBar, Image} from 'react-native';
 import { CELL_SIZE, BOARD_WIDTH, BOARD_HEIGHT, HEIGHT_BETWEEN_SCREEN_BOARD } from '../Constants';
+import { connect } from 'react-redux';
 
 class Login extends React.Component {
     //baloo
     render() {
         return (
         <View style={styles.container}>
+
             <StatusBar hidden={true} />  
             <ImageBackground source={require('../images/login.jpg')} style={styles.backgroundImage}>
                 <View style={styles.logoContainer}>
