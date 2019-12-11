@@ -133,7 +133,6 @@ class Game extends React.Component {
         }        
         Reset();    //resets the constants in system
         this.props.submitToTrue();
-        console.log(this.props.submit);
         this.props.resetGame();
         this.setState({gameOver: !this.state.gameOver}) 
         this.gameEngine.swap(this.setUpWorld());
