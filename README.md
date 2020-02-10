@@ -13,7 +13,8 @@ A simple mobile game based on the popular '2048
 - [x] User can see the leaderboard
 - [x] The game functionality works
 - [x] Implement game sounds
-- [x] Styling    
+- [x] Styling
+- [ ] Explain the user How to Play the game
 
 **Bugs**
 - [ ] Infinite collision between two blocks near the wall 
