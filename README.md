@@ -1,6 +1,7 @@
 # Decagon
 
-A simple mobile game based on the popular '2048
+A simple mobile game based on the popular '2048' where you combine the same side polygons to eventually 
+upgrade to a Decagon for points.
 
 ### 1. User Stories
 
